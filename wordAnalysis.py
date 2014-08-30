@@ -10,7 +10,7 @@ class WordAnalysis:
     def get_word_freq_vector(self):
         pass
 
-    def cal_word_vect_sim(self, wordvect, sim=None):
+    def cal_word_vector_sim(self, wordvect, sim=None):
         pass
 
     def get_abstract_of_text(self):
