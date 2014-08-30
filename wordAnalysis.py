@@ -9,14 +9,12 @@ def get_word_vector(word_list):
         word_vector[word] = word_vector.get(word, 0) + 1
     return word_vector
 
-
 def jaccard_coefficient(word_vector1, word_vector2):
     common_words = set(word_vector1.keys()) and set(word_vector2.keys())
     all_words = set(word_vector1.keys() + word_vector2.keys())
     if len(all_words) == 0:
         return 0
     return len(common_words) * 1.0 / len(all_words)
-
 
 class WordAnalysis:
     def __init__(self, text):
@@ -35,7 +33,7 @@ class WordAnalysis:
         return get_word_vector(word_list)
 
     def cal_word_vector_sim(self, word_vector, sim=jaccard_coefficient):
-        return sim(word_vector, get_word_vector(self.word_list))
+        return sim(word_vector, self.get_word_freq_vector())
 
     def get_abstract_of_text(self, topK=20):
         if not jieba:
@@ -55,12 +53,13 @@ class WordAnalysis:
 
         return '{' + ",".join(word_string_list) + '}'
 
-if __name__=='__main__':
 
+if __name__ == '__main__':
     text = 'a,b,c,d,a,b,c,d,e,d,f,g,h,i,i,j'
     wa = WordAnalysis(text)
     print wa.get_word_segmentation_list()
     print wa.get_word_freq_vector()
+    print wa.cal_word_vector_sim(wa.get_word_freq_vector())
     print wa
 
 
