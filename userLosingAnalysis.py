@@ -1,11 +1,10 @@
-
 import sys
-import bisect
 
 
 def average(seq):
     assert len(seq) != 0
-    return sum(seq) / len(seq)
+    seq = [x if isinstance(x, (int, float)) else 0 for x in seq]
+    return sum(seq) * 1.0 / len(seq)
 
 
 def distribution(seq):
@@ -22,6 +21,9 @@ class Record(object):
 class AppUser(Record):
     """application users"""
 
+    def __str__(self):
+        return str(self.__dict__)
+
 
 class Table(object):
     """records list"""
@@ -32,7 +34,7 @@ class Table(object):
     def __len__(self):
         return len(self.records)
 
-    def read_file(self, filePath, fields, cls, n=None):
+    def read_file(self, filePath, fields, cls, n=10):
         import csv
 
         try:
@@ -55,7 +57,7 @@ class Table(object):
             try:
                 fieldValue = type_(line[idx])
             except:
-                fieldValue = 0  #'NA'
+                fieldValue = 'NA'
             setattr(obj, fieldName, fieldValue)
         return obj
 
@@ -70,38 +72,23 @@ class Table(object):
         pass
 
     def get_average(self, field):
-        val = getattr(self.records[0], field)
-        if not isinstance(val, (int, float)):
-            raise TypeError('field %s is not valid type' % field)
         records = [getattr(record, field) for record in self.records]
-        print average(records),'here'
         return average(records)
 
     def get_distribution(self, field):
         records = [getattr(record, field) for record in self.records]
         return distribution(records)
 
-    def get_sorted_records(self, field, reverse=True):  #descending order on default
-        records = [(getattr(record, field), record) for record in self.records]
-        records.sort()
-        if reverse:
-            records.reverse()
-        return records
-
-    def _get_bisect_index(self, field):  #get bisect index of field
-        value = self.get_average(field)
-        records = self.get_sorted_records(field)
-        recordsValueSeq = [val for val, record in records]
-        index = bisect.bisect(recordsValueSeq, value)
-        return index
-
     def get_bisect_records(self, field, left=True):  #return left bisect data on default
         sortedRecords = self.get_sorted_records(field)
-        index = self._get_bisect_index(field)
-        # print "-->",sortedRecords[:index]
+        index = len(sortedRecords) / 2
         if left:
             return sortedRecords[:index]
         return sortedRecords[index:]
+
+    def get_sorted_records(self, field, reverse=True):
+        predicate = lambda obj: getattr(obj, field)
+        return sorted(self.records, key=predicate, reverse=reverse)
 
 
 class AppUsers(Table):
@@ -111,33 +98,37 @@ class AppUsers(Table):
         super(AppUsers, self).__init__()
         self.read_file(filePath, fields, cls)
 
-    def separate_user_group(self, fields):  #fields list to separate user to different groups
-        self.userGroups = dict()
-        for field in fields:
-            self.userGroups.setdefault(field, {})
-            lower = self.get_bisect_records(field)  #val,object
-            upper = self.get_bisect_records(field, False)  #val,object
-            self.userGroups[field]['lower'] = lower
-            self.userGroups[field]['upper'] = upper
-        return self.userGroups
+    def get_user_upper(self, field):
+        averageValue = self.get_average(field)
+        return [obj for obj in self.records if getattr(obj, field) > averageValue]
 
-    def get_user_model(self, fields, combination):  # combination sequence of 'lower', 'upper'
-        # usage : fields = ['access_time','freq','feeds']| combination = ['lower','upper','lower']
-        userModelList = []
-        fieldTypeList = zip(fields, combination)
-        userGroups = self.separate_user_group(fields)
-        for field, type_ in fieldTypeList:
-            userModelList.append(userGroups[field].get(type_, None))
-        return reduce(lambda x, y: set(x).intersection(set(y)), userModelList)
+    def get_user_lower(self, field):
+        averageValue = self.get_average(field)
+        return [obj for obj in self.records if getattr(obj, field) < averageValue]
+
+    def get_user_models(self, fields, combinations):
+        fclist = []
+        for field, combination in zip(fields, combinations):
+            if combination == 'lower':
+                fieldCombin = self.get_user_lower(field)
+                fclist.append(fieldCombin)
+            elif combination == 'upper':
+                fieldCombin = self.get_user_upper(field)
+                fclist.append(fieldCombin)
+        print len(fclist), 'len'
+        return reduce(lambda x, y: set(x) & set(y), fclist)
 
 
 def main():
     filepath = 'userfeed.csv'
     fields = [('uid', 0, str), ('freq', 0, int), ('workyear', 6, float), ('time', 5, int)]
-
     app2 = AppUsers(filepath, fields)
-    print app2.separate_user_group(['workyear'])['workyear']['lower']
-    # print app2.get_user_model(['freq', 'workyear', 'time'], ['upper', 'upper', 'lower'])
+
+    for item in app2.records:
+        print item
+
+    for item in app2.get_user_models(['freq', 'time', 'time'], ['upper', 'lower', 'lower']):
+        print item
 
 
 if __name__ == '__main__':
