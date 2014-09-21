@@ -11,7 +11,7 @@ def average(seq):
 def distribution(seq):
     distributions = dict()
     for val in seq:
-        distributions[val] = distributions.get(seq, 0) + 1
+        distributions[val] = distributions.get(val, 0) + 1
     return distributions
 
 
@@ -67,6 +67,12 @@ class Table(object):
 
     def extend_record(self, records):
         self.records.extend(records)
+
+    def get_records(self):
+        return self.records
+
+    def set_records(self, records):
+        self.records = records
 
     def recode(self):
         """override this method in subclass"""
@@ -134,8 +140,9 @@ def main():
 
     print "*" * 20
 
-    for item in app2.get_multiple_sorted_records(['freq', 'time', 'uid']):
-        print item
+    sortedSet = app2.get_user_models(['freq', 'time', 'uid'], ['upper', 'lower', 'upper'])
+    app2.set_records(list(sortedSet))
+    print app2.get_distribution('time')
 
 
 if __name__ == '__main__':
