@@ -1,4 +1,5 @@
 import sys
+from operator import attrgetter
 
 
 def average(seq):
@@ -34,7 +35,7 @@ class Table(object):
     def __len__(self):
         return len(self.records)
 
-    def read_file(self, filePath, fields, cls, n=10):
+    def read_file(self, filePath, fields, cls, n=20):
         import csv
 
         try:
@@ -86,9 +87,12 @@ class Table(object):
             return sortedRecords[:index]
         return sortedRecords[index:]
 
+    # ref: https://wiki.python.org/moin/HowTo/Sorting
     def get_sorted_records(self, field, reverse=True):
-        predicate = lambda obj: getattr(obj, field)
-        return sorted(self.records, key=predicate, reverse=reverse)
+        return sorted(self.records, key=attrgetter(field), reverse=reverse)
+
+    def get_multiple_sorted_records(self, fields, reverse=True):
+        return sorted(self.records, key=attrgetter(*fields), reverse=reverse)
 
 
 class AppUsers(Table):
@@ -115,35 +119,24 @@ class AppUsers(Table):
             elif combination == 'upper':
                 fieldCombin = self.get_user_upper(field)
                 fclist.append(fieldCombin)
-        print len(fclist), 'len'
+            else:
+                raise ValueError('Chose <upper> or <lower>')
         return reduce(lambda x, y: set(x) & set(y), fclist)
 
 
 def main():
     filepath = 'userfeed.csv'
-    fields = [('uid', 0, str), ('freq', 0, int), ('workyear', 6, float), ('time', 5, int)]
+    fields = [('uid', 0, int), ('freq', 7, str), ('workyear', 6, float), ('time', 5, int)]
     app2 = AppUsers(filepath, fields)
 
-    for item in app2.records:
+    for item in app2.get_user_models(['freq', 'time', 'uid'], ['upper', 'lower', 'upper']):
         print item
 
-    for item in app2.get_user_models(['freq', 'time', 'time'], ['upper', 'lower', 'lower']):
+    print "*" * 20
+
+    for item in app2.get_multiple_sorted_records(['freq', 'time', 'uid']):
         print item
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
