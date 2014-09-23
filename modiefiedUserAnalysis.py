@@ -1,5 +1,15 @@
 import sys
+import time
 from operator import attrgetter
+
+
+
+TIMENOW = time.time()
+# ref: http://blog.csdn.net/longshenlmj/article/details/13627537
+def timeProcess(timeStr,ISOFORMAT="%Y-%m-%d %H:%M:%S"):
+    structa = time.strptime(timeStr,ISOFORMAT) # STRUCT_TIME:(tm_year=2011, tm_mon=9, tm_mday=27, tm_hour=10, tm_min=50, tm_sec=0, tm_wday=1, tm_yday=270, tm_isdst=-1)
+    stampa = time.mktime(structa) # timestamp
+    return TIMENOW - stampa
 
 
 def average(seq):
@@ -162,7 +172,7 @@ def getUserFeeds(filepath, fields, field):
 if __name__ == '__main__':
 
     #return a user_feed_number pairs
-    feedFilePath = r"userfeed.csv"
+    feedFilePath = r"E:\2014 WorkBench\02 Personal File\pydev\usrAnalysis\userfeed.csv"
     fields = [('username', 1, str)]
     usersFeedNumber = getUserFeeds(feedFilePath, fields, 'username')
 
