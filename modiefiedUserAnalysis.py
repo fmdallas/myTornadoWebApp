@@ -172,7 +172,7 @@ def getUserFeeds(filepath, fields, field):
 if __name__ == '__main__':
 
     #return a user_feed_number pairs
-    feedFilePath = r"E:\2014 WorkBench\02 Personal File\pydev\usrAnalysis\userfeed.csv"
+    feedFilePath = "userfeed.csv"
     fields = [('username', 1, str)]
     usersFeedNumber = getUserFeeds(feedFilePath, fields, 'username')
 
