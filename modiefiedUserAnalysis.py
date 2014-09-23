@@ -172,6 +172,22 @@ if __name__ == '__main__':
     #set feed number to the corresponding user
     for userRecord in userTables.get_records():
         setattr(userRecord, 'feedNumber', usersFeedNumber.get(getattr(userRecord, 'userName'), 'NA'))
+	
+
+    # ---------------RFM MODEL REFERENCE-----------------------#
+    # recency, frequency, monetary  # sequence is important    #
+    # ---------------------------------------------------------#
+    # upper | upper | upper | # important, high-value customer #
+    # upper | lower | upper | # important, developing customer #
+    # lower | upper | upper | # important, to-keep customer    #
+    # lower | lower | upper | # important, to-retain customer  #
+    # ---------------------------------------------------------#	
+    # upper | upper | lower | # ordinary, high-value customer  #
+    # upper | lower | lower | # ordinary, developing customer  #
+    # lower | upper | lower | # ordinary, to-keep customer     #
+    # lower | lower | lower | # ordinary, to-retain customer   #
+    # ---------------------------------------------------------#
+
 
     # setup the user models here.
     combinations = [
