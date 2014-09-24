@@ -1,15 +1,35 @@
 import sys
+import csv
 import time
 from operator import attrgetter
 
-
+lessThan = lambda x, y: x < y
+setIntersection = lambda x, y: set(x) & set(y)
 
 TIMENOW = time.time()
 # ref: http://blog.csdn.net/longshenlmj/article/details/13627537
-def timeProcess(timeStr,ISOFORMAT="%Y-%m-%d %H:%M:%S"):
-    structa = time.strptime(timeStr,ISOFORMAT) # STRUCT_TIME:(tm_year=2011, tm_mon=9, tm_mday=27, tm_hour=10, tm_min=50, tm_sec=0, tm_wday=1, tm_yday=270, tm_isdst=-1)
-    stampa = time.mktime(structa) # timestamp
+# STRUCT_TIME:(tm_year=2011, tm_mon=9, tm_mday=27, tm_hour=10, tm_min=50, tm_sec=0, tm_wday=1, tm_yday=270, tm_isdst=-1)
+
+def timeProcess(timeStr, ISOFORMAT="%Y-%m-%d %H:%M:%S"):
+    structa = time.strptime(timeStr, ISOFORMAT)
+    stampa = time.mktime(structa) # timestamp, float number
     return TIMENOW - stampa
+
+
+def separate_equally(seq, n=5):
+    """
+    #return index of equally distance of a sequence
+    >> separate_equally([i for i in range(100)],4)
+    >> ([25, 50, 75, 100], 25)
+    """
+    delta = len(seq) / n
+    start, res = 0, []
+    while (True):
+        start += delta
+        if start > len(seq):
+            break
+        res.append(start)
+    return res, delta
 
 
 def average(seq):
@@ -25,16 +45,15 @@ def distribution(seq):
     return distributions
 
 
-lessThan = lambda x, y: x < y
-setIntersection = lambda x, y: set(x) & set(y)
-
-
 class Record(object):
     """record of users"""
 
 
 class AppUser(Record):
     """application users"""
+
+    def get(self, field):
+        return getattr(self, field)
 
     def __str__(self):
         return str(self.__dict__)
@@ -50,21 +69,17 @@ class Table(object):
         return len(self.records)
 
     def read_file(self, filePath, fields, cls, n=None):
-        import csv
-
         try:
-            # fp = open(filePath)
-            fp = csv.reader(open(filePath))
+            fp = csv.reader(open(filePath)) # fp = open(filePath)
         except:
             print "File path: %s doesn't exist..." % filePath
             sys.exit(0)
 
         for idx, line in enumerate(fp):
-            if idx == n:
-                break
+            if idx == 0: continue
+            if idx == n: break
             record = self.make_record(line, fields, cls)
             self.add_record(record)
-            # fp.close()
 
     def make_record(self, line, fields, cls):
         obj = cls()
@@ -72,7 +87,7 @@ class Table(object):
             try:
                 fieldValue = type_(line[idx])
             except:
-                fieldValue = 'NA'
+                fieldValue = 0 #'NA'
             setattr(obj, fieldName, fieldValue)
         return obj
 
@@ -91,6 +106,12 @@ class Table(object):
     def recode(self):
         """override this method in subclass"""
         pass
+
+    def normalize(self, field, method=max):
+        maxValue = max([getattr(obj, field) for obj in self.records])
+        assert maxValue != 0
+        for record in self.records:
+            setattr(record, field, float(getattr(record, field) / maxValue))
 
     def get_average(self, field):
         records = [getattr(record, field) for record in self.records]
@@ -127,7 +148,11 @@ class AppUsers(Table):
         records = self.get_sorted_records(field)
         upper, lower = [], []
         for record in records:
-            (upper, lower)[lessThan(getattr(record, field), averageValue)].append(record)
+            # (upper, lower)[lessThan(getattr(record, field), averageValue)].append(record)
+            if record.get(field) > averageValue:
+                upper.append(record)
+            else:
+                lower.append(record)
         return upper, lower
 
     def get_split_users_by_mean(self, fields):
@@ -147,42 +172,27 @@ class AppUsers(Table):
             seq.append(upperLowerList[index][UPPERLOWERDICT.get(combination)])
         return reduce(setIntersection, seq)
 
-
-def main():
-    filepath = 'losing_users.csv'
-    fields = [('userName', 1, str),
-              ('pageView', 2, int),
-              ('lastAccessTime', 3, float),
-              ('dept', 4, str),
-              ('level_id', 5, str)]
-    app2 = AppUsers(filepath, fields)
-    return app2
-
-    # sortedSet = app2.get_users_models(['workyear', 'time', 'uid'], ['upper', 'upper', 'lower'])
-    # app2.set_records(list(sortedSet))
-    # print app2.get_distribution('username')
-    # {'': 11, 'P2': 6, 'P3': 2, 'T4': 7, 'T2': 375, 'T3': 561, 'T1': 9, 'D2': 2, 'D3': 1}
+    def recode(self):
+        for record in self.records:
+            try:
+                timeDelta = TIMENOW - float(getattr(record, 'lastAccessTime'))
+            except:
+                print "unexpected record: %s" % record
+                timeDelta = 0
+            setattr(record, 'lastAccessTime', timeDelta)
 
 
-def getUserFeeds(filepath, fields, field):
-    app = AppUsers(filepath, fields)
-    return app.get_distribution(field)
+    def cal_RMF_scores(self, fieldsWeightValueSequence):
+        #[(fieldName,weightValue),...]
+        for record in self.records:
+            totalRMF = 0
+            for field, weightValue in fieldsWeightValueSequence:
+                totalRMF += float(getattr(record, field)) * weightValue
+            setattr(record, 'RMF_SCORE', totalRMF)
+        return self
 
 
 if __name__ == '__main__':
-
-    #return a user_feed_number pairs
-    feedFilePath = "userfeed.csv"
-    fields = [('username', 1, str)]
-    usersFeedNumber = getUserFeeds(feedFilePath, fields, 'username')
-
-    #return a lost users tables
-    userTables = main()
-
-    #set feed number to the corresponding user
-    for userRecord in userTables.get_records():
-        setattr(userRecord, 'feedNumber', usersFeedNumber.get(getattr(userRecord, 'userName'), 'NA'))
-	
 
     # ---------------RFM MODEL REFERENCE-----------------------#
     # recency, frequency, monetary  # sequence is important    #
@@ -191,44 +201,67 @@ if __name__ == '__main__':
     # upper | lower | upper | # important, developing customer #
     # lower | upper | upper | # important, to-keep customer    #
     # lower | lower | upper | # important, to-retain customer  #
-    # ---------------------------------------------------------#	
+    # ---------------------------------------------------------#
     # upper | upper | lower | # ordinary, high-value customer  #
-    # upper | lower | lower | # ordinary, developing customer  #
+    # upper | lower | lower | # ordinary, developing customer  #s
     # lower | upper | lower | # ordinary, to-keep customer     #
     # lower | lower | lower | # ordinary, to-retain customer   #
     # ---------------------------------------------------------#
 
-
     # setup the user models here.
-    combinations = [
-        ['upper','upper','upper'],
-        ['upper','upper','lower'],
-        ['upper','lower','upper'],
-        ['upper','lower','lower'],
-        ['lower','upper','upper'],
-        ['lower','upper','lower'],
-        ['lower','lower','upper'],
-        ['lower','lower','lower'],
-    ]
+    COMBINATIONS = [
+        ['upper', 'upper', 'upper'],
+        ['upper', 'upper', 'lower'],
+        ['upper', 'lower', 'upper'],
+        ['upper', 'lower', 'lower'],
+        ['lower', 'upper', 'upper'],
+        ['lower', 'upper', 'lower'],
+        ['lower', 'lower', 'upper'],
+        ['lower', 'lower', 'lower']]
 
-    sequenceResult = []
-    fields = ['pageView', 'feedNumber', 'lastAccessTime']
-    for combination in combinations:
-        sequenceResult.append(("-".join(combination),userTables.get_users_models(fields,combination)))
+    def main():
+        filePath = 'churnUserSourceData.csv'
+        fields = [('userName', 1, str),
+                  ('pageView', 2, int),
+                  ('feedsNumber', 3, int),
+                  ('dept', 5, str),
+                  ('level_id', 6, str),
+                  ('level_id_cn', 7, str),
+                  ('lastAccessTime', 8, float),
+                  ('ISOTIME',4, str)
+        ]
+        au = AppUsers(filePath, fields)
 
-    # print len(sequenceResult),sequenceResult[0][1]
+        print au.get_records()[0]
+        print "-"*80
+        au.recode()
+
+        au.normalize('lastAccessTime')
+
+        au.cal_RMF_scores([('pageView', 10), ('feedsNumber', 100), ('lastAccessTime', 1)])
+
+        print "average feedsNumber is : ", au.get_average('feedsNumber')
+        print "average pageView is :", au.get_average('pageView')
+        print "average lastAccessTime is :", au.get_average('lastAccessTime')
 
 
-    for type_, sets in sequenceResult:
-        userTables.set_records(list(sets))
-        print userTables.get_distribution('feedNumber')
+        sequenceResult, fields = [], ['feedsNumber', 'pageView', 'lastAccessTime']
+        for combination in COMBINATIONS:
+            sortedSequenceOfCombination = sorted(au.get_users_models(fields, combination),key=attrgetter('RMF_SCORE','feedsNumber','pageView'),reverse=True)
+            sequenceResult.append(("-".join(combination),sortedSequenceOfCombination))
 
-    # with open('userMedolsRecords.txt','w') as wfp:
-    #     for index, combination in enumerate(combinations):
-    #         wfp.write('\n %s->%s\n'%(index,combination))
-    #         for item in userTables.get_users_models(['pageView', 'feedNumber', 'lastAccessTime'],combination):
-    #             try:
-    #                 wfp.write('%s\n' %item)
-    #             except:
-    #                 print "oh....error..."
+        return sequenceResult, au.set_records([])
 
+        # return sequenceResult
+
+        # with open('userMedolsRecords.txt','w') as wfp:
+        #     for type_, records in sequenceResult:
+        #         wfp.write('\n')
+        #         wfp.write('|%s|%s\n' %(type_,"-".join(fields)))
+        #         for record in records:
+        #             try:
+        #                 for k,v in record.__dict__.items():
+        #                     wfp.write('%s:%s\t' %(k,v))
+        #             except:
+        #                 print repr(v)
+        #             wfp.write('\n')
