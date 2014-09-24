@@ -265,3 +265,24 @@ if __name__ == '__main__':
         #             except:
         #                 print repr(v)
         #             wfp.write('\n')
+        
+        type_sequence,au  = main()
+    
+        for type_, seq in type_sequence:
+            au.set_records(list(seq))
+            print "distribution of level_id is ",
+            print sorted(au.get_distribution('level_id').items(),key=itemgetter(1))
+    
+            print "average of feedsNumber is ",
+            print au.get_average('feedsNumber')
+    
+            print "distribution of feedsNumber is ",
+            print sorted(au.get_distribution('feedsNumber').items(),key=itemgetter(1))
+    
+            print "average of pageView is ",
+            print au.get_average('pageView')
+    
+            print "distribution of pageView is ",
+            print sorted(au.get_distribution('pageView').items(),key=itemgetter(1))
+    
+            print "="*100
