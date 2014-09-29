@@ -1,7 +1,8 @@
 import sys
 import csv
 import time
-from operator import attrgetter
+import Pmf as _pmf
+from operator import attrgetter,itemgetter
 
 lessThan = lambda x, y: x < y
 setIntersection = lambda x, y: set(x) & set(y)
@@ -13,7 +14,7 @@ TIMENOW = time.time()
 def timeProcess(timeStr, ISOFORMAT="%Y-%m-%d %H:%M:%S"):
     structa = time.strptime(timeStr, ISOFORMAT)
     stampa = time.mktime(structa) # timestamp, float number
-    return TIMENOW - stampa
+    return (TIMENOW - stampa)/(24*3600)
 
 
 def separate_equally(seq, n=5):
@@ -174,13 +175,7 @@ class AppUsers(Table):
 
     def recode(self):
         for record in self.records:
-            try:
-                timeDelta = TIMENOW - float(getattr(record, 'lastAccessTime'))
-            except:
-                print "unexpected record: %s" % record
-                timeDelta = 0
-            setattr(record, 'lastAccessTime', timeDelta)
-
+            setattr(record, 'timeDelta', timeProcess(getattr(record,'ISOTIME')))
 
     def cal_RMF_scores(self, fieldsWeightValueSequence):
         #[(fieldName,weightValue),...]
@@ -203,7 +198,7 @@ if __name__ == '__main__':
     # lower | lower | upper | # important, to-retain customer  #
     # ---------------------------------------------------------#
     # upper | upper | lower | # ordinary, high-value customer  #
-    # upper | lower | lower | # ordinary, developing customer  #s
+    # upper | lower | lower | # ordinary, developing customer  #
     # lower | upper | lower | # ordinary, to-keep customer     #
     # lower | lower | lower | # ordinary, to-retain customer   #
     # ---------------------------------------------------------#
@@ -218,6 +213,12 @@ if __name__ == '__main__':
         ['lower', 'upper', 'lower'],
         ['lower', 'lower', 'upper'],
         ['lower', 'lower', 'lower']]
+
+    def printSortedDict(dctToPrint,key=itemgetter(1)):
+        with open('dept.txt','w') as wfp:
+            for k,v in sorted(dctToPrint.items(),key=key,reverse=True):
+                wfp.write('%s\t%s\n' %(k,v))
+        wfp.close()
 
     def main():
         filePath = 'churnUserSourceData.csv'
@@ -236,13 +237,28 @@ if __name__ == '__main__':
         print "-"*80
         au.recode()
 
-        au.normalize('lastAccessTime')
+        for record in au.records:
+            print getattr(record,'timeDelta'),"HERE."
+
+
+        # au.normalize('lastAccessTime')
 
         au.cal_RMF_scores([('pageView', 10), ('feedsNumber', 100), ('lastAccessTime', 1)])
 
         print "average feedsNumber is : ", au.get_average('feedsNumber')
         print "average pageView is :", au.get_average('pageView')
-        print "average lastAccessTime is :", au.get_average('lastAccessTime')
+        print "average lastAccessTime is :", au.get_average('timeDelta')
+
+        print "_"*100
+
+
+        # x = au.get_distribution('dept')
+        # sumList = sum(x.values())
+        # for key,val in x.iteritems():
+        #     x[key]=100.0*val/sumList
+        #
+        # printSortedDict(x)
+
 
 
         sequenceResult, fields = [], ['feedsNumber', 'pageView', 'lastAccessTime']
@@ -250,7 +266,7 @@ if __name__ == '__main__':
             sortedSequenceOfCombination = sorted(au.get_users_models(fields, combination),key=attrgetter('RMF_SCORE','feedsNumber','pageView'),reverse=True)
             sequenceResult.append(("-".join(combination),sortedSequenceOfCombination))
 
-        return sequenceResult, au.set_records([])
+        return sequenceResult, au
 
         # return sequenceResult
 
@@ -265,24 +281,40 @@ if __name__ == '__main__':
         #             except:
         #                 print repr(v)
         #             wfp.write('\n')
-        
-        type_sequence,au  = main()
-    
-        for type_, seq in type_sequence:
-            au.set_records(list(seq))
-            print "distribution of level_id is ",
-            print sorted(au.get_distribution('level_id').items(),key=itemgetter(1))
-    
-            print "average of feedsNumber is ",
-            print au.get_average('feedsNumber')
-    
-            print "distribution of feedsNumber is ",
-            print sorted(au.get_distribution('feedsNumber').items(),key=itemgetter(1))
-    
-            print "average of pageView is ",
-            print au.get_average('pageView')
-    
-            print "distribution of pageView is ",
-            print sorted(au.get_distribution('pageView').items(),key=itemgetter(1))
-    
-            print "="*100
+
+    type_sequence,au  = main()
+
+    print au
+    # for type_, seq in type_sequence:
+    #     au.set_records(list(seq))
+        # print "distribution of level_id is ",
+        # print sorted(au.get_distribution('level_id').items(),key=itemgetter(1))
+        #
+        # print "average of feedsNumber is ",
+        # print au.get_average('feedsNumber')
+        #
+        # print "distribution of feedsNumber is ",
+        # print sorted(au.get_distribution('feedsNumber').items(),key=itemgetter(1))
+        #
+        # print "average of pageView is ",
+        # print au.get_average('pageView')
+        #
+        # print "distribution of pageView is ",
+        # print sorted(au.get_distribution('pageView').items(),key=itemgetter(1))
+        #
+        # print "="*100
+
+        #-------------------write2csv----------------------------------
+        # csvWriter = csv.writer(open('%s.csv' %type_,'wb'))
+        #
+        # workLevel = _pmf.Pmf(au.get_distribution('level_id_cn'),type_)
+        # print workLevel.name
+        # # print workLevel.Print(),
+        # for line in sorted(workLevel.GetDict().iteritems(),key=itemgetter(0),reverse=True):
+        #     csvWriter.writerow(line)
+
+    #
+    # au.set_records(list(type_sequence[1][1]))
+    # workLevel = _pmf.Pmf(au.get_distribution('level_id'),'LEVEL_ID')
+    # # print workLevel.Print(),
+    # print sorted(workLevel.GetDict().iteritems(),key=itemgetter(0),reverse=True)
