@@ -13,6 +13,10 @@ class Authorizor:
         self.permissions = {}
 
     def add_permission(self, perm_name):
+        """
+        Create a new permission that users
+        can be added to
+        """
         try:
             perm_set = self.permissions[perm_name]
         except KeyError:
@@ -21,6 +25,9 @@ class Authorizor:
             raise PermissionError("Permission Exists")
 
     def permit_user(self, perm_name, username):
+        """
+        Grant the given permission to the user
+        """
         try:
             perm_set = self.permissions[perm_name]
         except KeyError:
