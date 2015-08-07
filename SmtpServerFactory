@@ -1,0 +1,25 @@
+__author__ = 'Jacklam'
+
+import random
+import socket
+import smtplib
+
+
+class SmtpServerFactory:
+    # this is a smtp server factory, always return a radom smtp server
+    def _get_addr_from_name(self, hostname):
+        addrs = socket.getaddrinfo(hostname, smtplib.SMTP_PORT, 0, socket.SOCK_STREAM)
+        return [addr[4][0] for addr in addrs]
+
+    def get_server(self, hostname):
+        addrs = self._get_addr_from_name(hostname)
+        random.shuffle(addrs)
+        for addr in addrs:
+            try:
+                smtp_server = smtplib.SMTP(addr)
+            except Exception, e:
+                pass
+            else:
+                print addr
+                return smtp_server
+        return None
