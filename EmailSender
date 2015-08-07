@@ -93,8 +93,8 @@ if __name__ == '__main__':
     email_sender = EmailSender()
     email_sender.set_smtp_server(host_name)
     email_sender.login_to_server(username, password)
+    
     html_template = email_sender.set_html_template(html_template)
-    email_sender.set_mime_message('subject', username, 'reciver@xx.com', html_template)
     email_sender.send_emails_to_recievers(username,email_recievers_list,html_template,**kwargs)
 
 
