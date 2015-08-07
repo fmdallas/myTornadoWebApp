@@ -39,7 +39,7 @@ class EmailSender:
     def set_html_template(self, html_template, **kwargs):
         # substitute key value pairs
         for k,v in kwargs.items():
-            html_template = html_template.replace('{}'.format(k),v)
+            html_template = html_template.replace(k,v)
         return html_template
 
     def set_mime_message(self, subject, from_, to_, html_template, codingType='utf8'):
